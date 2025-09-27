@@ -1,0 +1,4 @@
+1. python -m venv dr-env           //Create environment
+2. .\dr-env\Scripts\Activate.ps1    //Activate environment
+3. pip install --upgrade pip        //Check for pip updates
+4. pip install torch torchvision timm albumentations opencv-python pandas scikit-learn matplotlib tqdm pillow       //Install dependicies
