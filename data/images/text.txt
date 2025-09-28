@@ -1,1 +1,0 @@
-Add image files in the "images directory"
