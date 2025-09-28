@@ -1,4 +1,5 @@
 import cv2
+import matplotlib.pyplot as plt
 #import os
 
 file_path = r'data\images\0a4e1a29ffff.png'
@@ -12,7 +13,7 @@ img = cv2.imread(file_path)
     #raise ValueError(f"Failed to load image: {file_path}")
 
 img = img[:, :, ::-1]
-import matplotlib.pyplot as plt
+
 plt.imshow(img)
 plt.axis('off')
 plt.show()
