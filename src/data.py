@@ -62,4 +62,5 @@ if __name__ == "__main__":
 
 
 #Errors to be solved
+#If solving do it in a seperate file
         
