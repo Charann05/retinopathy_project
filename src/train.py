@@ -6,9 +6,14 @@ from sklearn.metrics import accuracy_score
 from tqdm import tqdm
 
 def train():
+    print("Training...")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    train_ds = FundusDataset('C:\VS Code\retinopathy_project\data\labels.csv', 'C:\VS Code\retinopathy_project\data\images', get_transforms(train=True))
-    val_ds   = FundusDataset('C:\VS Code\retinopathy_project\data\labels.csv', 'C:\VS Code\retinopathy_project\data\images', get_transforms(train=False))
+    print(f"Using device: {device}")
+    train_csv = r"C:\VS Code\retinopathy_project\data\labels_train.csv"
+    val_csv = r"C:\VS Code\retinopathy_project\data\labels_val.csv"
+    image_dir = r"C:\VS Code\retinopathy_project\data\images"
+    train_ds = FundusDataset(train_csv, image_dir, get_transforms(train=True))
+    val_ds   = FundusDataset(val_csv, image_dir, get_transforms(train=False))
 
     train_loader = DataLoader(train_ds, batch_size=16, shuffle=True, num_workers=2)
     val_loader = DataLoader(val_ds, batch_size=16, shuffle=False, num_workers=2)
@@ -43,3 +48,11 @@ def train():
         if acc > best_val_acc:
             best_val_acc = acc
             torch.save(model.state_dict(), 'best_model.pth')
+            print(f"Best model saved with accuracy: {best_val_acc:.4f}")
+
+    print("Training completed!")
+
+#Code below is only for testing
+
+if __name__ == "__main__":
+    train()
