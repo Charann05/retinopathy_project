@@ -26,23 +26,28 @@ def basic_preprocess(img, size=512):
     img = cv2.resize(img, (size,size))
     return img
 
-def get_transforms(train=False, size=512):
+def get_transforms(train=True, size=512):
     if train:
         return A.Compose([
-            A.RandomResizedCrop(size, size, scale=(0.9,1.0)),
+            A.RandomResizedCrop(size=(size, size), scale=(0.9, 1.0)),
             A.HorizontalFlip(p=0.5),
             A.Rotate(limit=25, p=0.5),
             A.Normalize(),
             ToTensorV2()
         ])
     else:
-        return A.Compose([A.Resize(size,size), A.Normalize(), ToTensorV2()])
+        return A.Compose([
+            A.Resize(height=size, width=size),
+            A.Normalize(),
+            ToTensorV2()
+        ])
 
 class FundusDataset(Dataset):
     def __init__(self, csv_file, images_dir, transforms):
         csv_file = r"C:\VS Code\retinopathy_project\data\labels.csv"
         images_dir = r"C:\VS Code\retinopathy_project\data\images"
 
+        #self.df = pd.read_csv(csv_file)
         self.df = pd.read_csv(csv_file , names = ['image','label'])
         self.images_dir = images_dir
         self.transforms = transforms
@@ -54,7 +59,7 @@ class FundusDataset(Dataset):
         pat = os.path.join(self.images_dir, row['image'])
         path = (f"{pat}.png")
 
-        #print("Reading:", path)
+        print("Reading:", path)
         img = read_image(path)
 
         #if img is None:
@@ -67,12 +72,12 @@ class FundusDataset(Dataset):
       
 
 #Code below is only for testing
-if __name__ == "__main__":
-    transforms = get_transforms(train=False)
-    dataset = FundusDataset("csv_file", "images_dir", transforms)
-    print(f"Number of samples: {len(dataset)}")
-    img, label = dataset[1]
-    print(f"Image shape: {img.shape}, Label: {label}")
+#if __name__ == "__main__":
+    #transforms = get_transforms(train=False)
+    #dataset = FundusDataset("csv_file", "images_dir", transforms)
+    #print(f"Number of samples: {len(dataset)}")
+    #img, label = dataset[0]
+    #print(f"Image shape: {img.shape}, Label: {label}")
     
     #if jk is None:
         #print("Can't print")
