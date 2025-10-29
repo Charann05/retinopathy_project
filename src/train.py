@@ -54,5 +54,5 @@ def train():
 
 #Code below is only for testing
 
-if __name__ == "__main__":
-    train()
+#if __name__ == "__main__":
+    #train()
