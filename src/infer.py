@@ -1,12 +1,15 @@
 import torch, cv2, matplotlib.pyplot as plt
 from src.model import create_model
 from src.data import basic_preprocess, get_transforms
+from tkinter import Tk, filedialog
 
 model = create_model(n_classes=5)
 model.load_state_dict(torch.load('best_model.pth', map_location='cpu', weights_only=True))
 model.eval()
 
-path = input("Enter image path: ").strip()
+Tk().withdraw()
+path = filedialog.askopenfilename(title="Select an image file")
+
 img = cv2.imread(path)
 if img is None:
     raise FileNotFoundError(f"Could not load image from {path}")
