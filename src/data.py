@@ -44,8 +44,8 @@ def get_transforms(train=True, size=512):
 
 class FundusDataset(Dataset):
     def __init__(self, csv_file, images_dir, transforms):
-        csv_file = r"C:\VS Code\retinopathy_project\data\labels.csv"
-        images_dir = r"C:\VS Code\retinopathy_project\data\images"
+        csv_file = r"C:\VS Code\retinopathy_project\data\combined\labels_combined.csv"
+        images_dir = r"C:\VS Code\retinopathy_project\data\combined\images"
 
         #self.df = pd.read_csv(csv_file)
         self.df = pd.read_csv(csv_file , names = ['image','label'])
