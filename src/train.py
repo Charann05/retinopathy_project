@@ -9,9 +9,9 @@ def train():
     print("Training...")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
-    train_csv = r"C:\VS Code\retinopathy_project\data\labels_train.csv"
-    val_csv = r"C:\VS Code\retinopathy_project\data\labels_val.csv"
-    image_dir = r"C:\VS Code\retinopathy_project\data\images"
+    train_csv = r"C:\VS Code\retinopathy_project\data\combined\labels_train.csv"
+    val_csv = r"C:\VS Code\retinopathy_project\data\combined\labels_val.csv"
+    image_dir = r"C:\VS Code\retinopathy_project\data\combined\images"
     train_ds = FundusDataset(train_csv, image_dir, get_transforms(train=True))
     val_ds   = FundusDataset(val_csv, image_dir, get_transforms(train=False))
 
@@ -23,7 +23,7 @@ def train():
     criterion = nn.CrossEntropyLoss()
 
     best_val_acc = 0.0
-    for epoch in range(1,11):
+    for epoch in range(1,6):
         model.train()
         losses = []
         for imgs, labels in tqdm(train_loader):
@@ -54,5 +54,5 @@ def train():
 
 #Code below is only for testing
 
-#if __name__ == "__main__":
-    #train()
+if __name__ == "__main__":
+    train()
