@@ -22,7 +22,7 @@ def copy_and_prefix_images(img_dir, csv_file, prefix):
         old_name = row['image']
         new_name = f"{prefix}_{old_name}"
         src = img_dir / f"{old_name}.png"
-        dst = output_img_dir / new_name
+        dst = output_img_dir / f"{new_name}.png"
 
         if src.exists():
             copy2(src, dst)
