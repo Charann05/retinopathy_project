@@ -1,40 +1,58 @@
-import torch, torch.nn as nn
+import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from src.data import FundusDataset, get_transforms
 from src.model import create_model
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
+import pandas as pd
 
 def train():
-    print("Training...")
+    print("Training started...")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
+
     train_csv = r"C:\VS Code\retinopathy_project\data\combined\labels_train.csv"
-    val_csv = r"C:\VS Code\retinopathy_project\data\combined\labels_val.csv"
+    val_csv   = r"C:\VS Code\retinopathy_project\data\combined\labels_val.csv"
     image_dir = r"C:\VS Code\retinopathy_project\data\combined\images"
+
     train_ds = FundusDataset(train_csv, image_dir, get_transforms(train=True))
     val_ds   = FundusDataset(val_csv, image_dir, get_transforms(train=False))
 
     train_loader = DataLoader(train_ds, batch_size=16, shuffle=True, num_workers=2)
-    val_loader = DataLoader(val_ds, batch_size=16, shuffle=False, num_workers=2)
+    val_loader   = DataLoader(val_ds, batch_size=16, shuffle=False, num_workers=2)
 
     model = create_model(n_classes=5).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    criterion = nn.CrossEntropyLoss()
+
+    train_df = pd.read_csv(train_csv, names=['image', 'label'])
+    class_counts = train_df['label'].value_counts().sort_index()
+    weights = torch.tensor([1.0/c for c in class_counts], dtype=torch.float32)
+    weights = weights / weights.sum()
+    print("Class weights:", weights)
+    criterion = nn.CrossEntropyLoss(weight=weights.to(device))
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, verbose=True)
 
     best_val_acc = 0.0
-    for epoch in range(1,6):
+    for epoch in range(1, 11):
         model.train()
-        losses = []
-        for imgs, labels in tqdm(train_loader):
+        train_losses = []
+
+        for imgs, labels in tqdm(train_loader, desc=f"Epoch {epoch}/10"):
             imgs, labels = imgs.to(device), labels.to(device)
             preds = model(imgs)
             loss = criterion(preds, labels)
-            optimizer.zero_grad(); loss.backward(); optimizer.step()
-            losses.append(loss.item())
-        print(f"Epoch {epoch} train_loss={sum(losses)/len(losses):.4f}")
 
-        # Validation
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            train_losses.append(loss.item())
+
+        avg_train_loss = sum(train_losses) / len(train_losses)
+        print(f"\nEpoch {epoch} - Train Loss: {avg_train_loss:.4f}")
+
         model.eval()
         all_preds, all_labels = [], []
         with torch.no_grad():
@@ -42,17 +60,20 @@ def train():
                 imgs = imgs.to(device)
                 out = model(imgs)
                 preds = out.argmax(dim=1).cpu().numpy()
-                all_preds.extend(preds); all_labels.extend(labels.numpy())
+                all_preds.extend(preds)
+                all_labels.extend(labels.numpy())
+
         acc = accuracy_score(all_labels, all_preds)
-        print(f"Epoch {epoch} val_acc={acc:.4f}")
+        print(f"Epoch {epoch} - Validation Accuracy: {acc:.4f}")
+
+        scheduler.step(acc)
+
         if acc > best_val_acc:
             best_val_acc = acc
             torch.save(model.state_dict(), 'best_model.pth')
-            print(f"Best model saved with accuracy: {best_val_acc:.4f}")
+            print(f"Best model saved (val_acc={best_val_acc:.4f})")
 
-    print("Training completed!")
-
-#Code below is only for testing
+    print("\nTraining completed successfully!")
 
 if __name__ == "__main__":
     train()
