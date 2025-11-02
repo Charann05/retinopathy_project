@@ -2,7 +2,6 @@ import streamlit as st
 from PIL import Image
 import os
 
-# Try importing torch/timm only when needed
 try:
     import torch
     import timm
@@ -17,22 +16,31 @@ except Exception:
 @st.cache_resource
 def load_model_safe():
     if not TORCH_AVAILABLE:
+        st.warning("Torch or timm not available. Please install them.")
         return None
+
     try:
-        model = timm.create_model("tf_efficientnet_b0.ns_jft_in1k", pretrained=False, num_classes=5)
-        # make sure path exists; if not, we return None
-        model_path = os.path.join("model", "best_model.pth")
+        model_path = "best_model.pth"
         if not os.path.exists(model_path):
+            st.error(f"Model file not found at: {model_path}")
             return None
-        model.load_state_dict(torch.load(model_path, map_location='cpu'))
+
+        model = timm.create_model("tf_efficientnet_b0", pretrained=False, num_classes=5)
+        state_dict = torch.load(model_path, map_location='cpu')
+
+        if isinstance(state_dict, dict) and "state_dict" in state_dict:
+            state_dict = state_dict["state_dict"]
+
+        model.load_state_dict(state_dict, strict=False)
         model.eval()
         return model
+
     except Exception as e:
-        # If model load fails, return None
+        st.error(f"Error loading model: {e}")
         return None
 
 # ======================
-# Utility: init session state
+# Session Initialization
 # ======================
 def init_session():
     if "page" not in st.session_state:
@@ -44,37 +52,59 @@ def init_session():
     if "last_uploaded" not in st.session_state:
         st.session_state["last_uploaded"] = None
 
-# ======================
-# Top-right Info button
-# ======================
-def top_right_info_button():
-    # create two columns, right one for button to simulate top-right placement
-    c1, c2 = st.columns([9,1])
-    with c2:
-        if st.button("☰"):
-            st.session_state["show_info"] = not st.session_state["show_info"]
 
-    # If toggled, show a floating-like box (regular content below header)
-    if st.session_state["show_info"]:
-        with st.expander("App Info / Manual", expanded=True):
-            st.markdown("**Aim:** Assist in early detection of Diabetic Retinopathy using AI.")
-            st.markdown("**Model:** EfficientNet-B0 (trained).")
-            st.markdown("**How to use:** Upload a clear fundus image → Submit → View color-coded result.")
-            st.markdown("---")
+# ======================
+# LEFT-SIDE SETTINGS PANEL (NEW)
+# ======================
+def left_side_settings():
+    with st.sidebar:
+        st.markdown("## ⚙️ Settings / Info")
 
-# --- PAGE 1: WELCOME ---
+        with st.expander("🎯 Aim", expanded=False):
+            st.write("Assist in early detection of Diabetic Retinopathy using AI.")
+
+        with st.expander("📘 Purpose", expanded=False):
+            st.write("Provide an easy-to-use platform for preliminary screening of retinal images.")
+
+        with st.expander("📋 Guidelines", expanded=False):
+            st.markdown("""
+            - Upload a **clear retinal fundus image** (JPG/PNG).  
+            - Click **Submit** to analyze.  
+            - View the **color-coded result**:  
+              🟢 No DR | 🟡 Mild | 🟠 Moderate | 🔴 Severe | 🩸 Proliferative
+            """)
+
+        with st.expander("🧰 Tools Used", expanded=False):
+            st.markdown("""
+            - Streamlit (Frontend)  
+            - PyTorch + timm (Model)  
+            - EfficientNet-B0 (Architecture)  
+            - Pillow (Image Processing)
+            """)
+
+        with st.expander("📊 Result Info", expanded=False):
+            st.markdown("""
+            Displays model prediction with severity level and short interpretation.
+            """)
+
+
+# ======================
+# WELCOME PAGE
+# ======================
 def welcome_page():
     st.markdown("<h1 style='text-align: center;'>🩺 Diabetic Retinopathy Detection</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center;'>AI-assisted, easy-to-use retinal screening tool.</p>", unsafe_allow_html=True)
 
-    st.write("")  # spacing
+    st.write("")
     col1, col2, col3 = st.columns([2, 1, 2])
     with col2:
         if st.button("🚀 Get Started", use_container_width=True):
             st.session_state.page = "instructions"
             st.rerun()
+
+
 # ======================
-# PAGE: Instructions
+# INSTRUCTIONS PAGE
 # ======================
 def instructions_page():
     st.markdown("<h2 style='text-align:center; color:#0b486b;'>📘 How to Use</h2>", unsafe_allow_html=True)
@@ -85,48 +115,53 @@ def instructions_page():
     - 4️⃣ Use **Try Again** to analyze another image.
     """)
     st.write("")
-    if st.button("Next ➡️", use_container_width=True):
-        st.session_state["page"] = "detection"
-        st.rerun()
-    if st.button("Back to Home"):
-        st.session_state["page"] = "welcome"
-        st.rerun()
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        if st.button("⬅️ Back to Home", use_container_width=True):
+            st.session_state["page"] = "welcome"
+            st.rerun()
+    with c2:
+        if st.button("Next ➡️", use_container_width=True):
+            st.session_state["page"] = "detection"
+            st.rerun()
+
 
 # ======================
-# PAGE: Detection (Upload + Submit)
+# DETECTION PAGE (IMPROVED LAYOUT)
 # ======================
 def detection_page(model):
     st.markdown("<h2 style='text-align:center; color:#0b486b;'>🔍 Detection</h2>", unsafe_allow_html=True)
     st.write("Upload a retinal fundus image (jpg/png).")
 
-    uploaded_file = st.file_uploader("Browse image", type=["jpg","jpeg","png"], key="uploader")
+    uploaded_file = st.file_uploader("📁 Browse image", type=["jpg", "jpeg", "png"], key="uploader")
+
     if uploaded_file:
-        # show preview
         img = Image.open(uploaded_file).convert("RGB")
-        st.image(img, caption="Preview", use_container_width=True)
+        st.image(img, caption="🖼️ Preview", use_container_width=True)
         st.session_state["last_uploaded"] = uploaded_file
 
-        if st.button("🧠 Submit for Detection", use_container_width=True):
-            # If model not available show friendly message
+        st.markdown("<br>", unsafe_allow_html=True)
+        # Center submit button
+        st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+        if st.button("🧠 Submit for Detection", use_container_width=False):
             if model is None:
-                st.warning("Model not available or failed to load. Running with dummy/random result for demo.")
-                # dummy result (you can remove this block and require model)
+                st.warning("Model not available or failed to load. Using demo result.")
                 import random
-                pred_idx = random.randint(0,4)
+                pred_idx = random.randint(0, 4)
             else:
-                # preprocess and predict
                 try:
-                    preprocess = transforms.Compose([
-                        transforms.Resize((224,224)),
-                        transforms.ToTensor(),
-                        transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])
-                    ])
+                    from timm.data import resolve_model_data_config
+                    from timm.data.transforms_factory import create_transform
+
+                    config = resolve_model_data_config(model)
+                    preprocess = create_transform(**config)
                     img_t = preprocess(img).unsqueeze(0)
+
                     with torch.no_grad():
                         preds = model(img_t)
                         pred_idx = int(preds.argmax(dim=1).item())
                 except Exception as e:
-                    st.error("Error during prediction. See console for details.")
+                    st.error("Error during prediction.")
                     pred_idx = 0
 
             classes = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
@@ -134,22 +169,44 @@ def detection_page(model):
             st.session_state["result"] = {"label": classes[pred_idx], "color": colors[pred_idx]}
             st.session_state["page"] = "result"
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
     else:
         st.info("Please upload an image to proceed.")
 
-    # small actions
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("◀️ Back"):
+            # bottom buttons (Back - left, Home - center, Reset - right)
+    st.markdown("<br><br>", unsafe_allow_html=True)
+
+    # Create 3 equal columns
+    col1, col2, col3 = st.columns([1, 1, 1])
+
+    # Left corner - Back button
+    with col1:
+        st.markdown("<div style='text-align:left;'>", unsafe_allow_html=True)
+        if st.button("◀️ Back", use_container_width=False):
             st.session_state["page"] = "instructions"
             st.rerun()
-    with c2:
-        if st.button("🏠 Home"):
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Center - Home button
+    with col2:
+        st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+        if st.button("🏠 Home", use_container_width=False):
             st.session_state["page"] = "welcome"
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Right corner - Reset button
+    with col3:
+        st.markdown("<div style='text-align:right;'>", unsafe_allow_html=True)
+        if st.button("🔁 Reset", use_container_width=False):
+            st.session_state["last_uploaded"] = None
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ======================
-# PAGE: Result
+# RESULT PAGE
 # ======================
 def result_page():
     res = st.session_state.get("result")
@@ -168,7 +225,6 @@ def result_page():
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.write("Interpretation:")
-    # short guidance per class
     guidance = {
         "No DR": "No signs of diabetic retinopathy detected. Maintain routine check-ups.",
         "Mild": "Small microaneurysms visible. Recommend ophthalmologist review.",
@@ -178,38 +234,33 @@ def result_page():
     }
     st.info(guidance.get(label, ""))
 
-    col1, col2, col3 = st.columns([1,1,1])
-    with col1:
-        if st.button("🔁 Try Another Image"):
-            # reset result and go detect
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c1:
+        if st.button("🔁 Try Another"):
             st.session_state["result"] = None
             st.session_state["page"] = "detection"
             st.rerun()
-    with col2:
-        if st.button("⤴️ Re-run (same image)"):
-            # keep last_uploaded and go to detection (user will press submit)
+    with c2:
+        if st.button("⤴️ Re-run"):
             st.session_state["page"] = "detection"
             st.rerun()
-    with col3:
+    with c3:
         if st.button("🏠 Home"):
             st.session_state["result"] = None
             st.session_state["page"] = "welcome"
             st.rerun()
 
+
 # ======================
-# APP MAIN
+# MAIN APP
 # ======================
 def main():
     st.set_page_config(page_title="DR Detection", page_icon="🩸", layout="centered")
     init_session()
+    left_side_settings()  # 👈 NEW: Sidebar replaces top-right info button
 
-    # top-right info toggle
-    top_right_info_button()
-
-    # Load model once (safe)
     model = load_model_safe()
 
-    # Route pages
     page = st.session_state["page"]
     if page == "welcome":
         welcome_page()
@@ -222,6 +273,7 @@ def main():
     else:
         st.session_state["page"] = "welcome"
         welcome_page()
+
 
 if __name__ == "__main__":
     main()
