@@ -1,5 +1,3 @@
-
-# src/model.py
 import timm
 import torch.nn as nn
 
