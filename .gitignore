@@ -2,3 +2,4 @@
 __pycache__/
 results/
 data/
+echo "dib/Lib/site-packages/" 

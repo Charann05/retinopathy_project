@@ -60,21 +60,21 @@ def left_side_settings():
     with st.sidebar:
         st.markdown("## ⚙️ Settings / Info")
 
-        with st.expander("🎯 Aim", expanded=False):
+        with st.expander("Aim", expanded=False):
             st.write("Assist in early detection of Diabetic Retinopathy using AI.")
 
-        with st.expander("📘 Purpose", expanded=False):
+        with st.expander("Purpose", expanded=False):
             st.write("Provide an easy-to-use platform for preliminary screening of retinal images.")
 
-        with st.expander("📋 Guidelines", expanded=False):
+        with st.expander("Guidelines", expanded=False):
             st.markdown("""
             - Upload a **clear retinal fundus image** (JPG/PNG).  
             - Click **Submit** to analyze.  
             - View the **color-coded result**:  
-              🟢 No DR | 🟡 Mild | 🟠 Moderate | 🔴 Severe | 🩸 Proliferative
+               No DR |  Mild |  Moderate |  Severe |  Proliferative
             """)
 
-        with st.expander("🧰 Tools Used", expanded=False):
+        with st.expander(" Tools Used", expanded=False):
             st.markdown("""
             - Streamlit (Frontend)  
             - PyTorch + timm (Model)  
@@ -82,7 +82,7 @@ def left_side_settings():
             - Pillow (Image Processing)
             """)
 
-        with st.expander("📊 Result Info", expanded=False):
+        with st.expander(" Result Info", expanded=False):
             st.markdown("""
             Displays model prediction with severity level and short interpretation.
             """)
@@ -92,7 +92,7 @@ def left_side_settings():
 # WELCOME PAGE
 # ======================
 def welcome_page():
-    st.markdown("<h1 style='text-align: center;'>🩺 Diabetic Retinopathy Detection</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'> Diabetic Retinopathy Detection</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center;'>AI-assisted, easy-to-use retinal screening tool.</p>", unsafe_allow_html=True)
 
     st.write("")
@@ -107,7 +107,7 @@ def welcome_page():
 # INSTRUCTIONS PAGE
 # ======================
 def instructions_page():
-    st.markdown("<h2 style='text-align:center; color:#0b486b;'>📘 How to Use</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#0b486b;'> How to Use</h2>", unsafe_allow_html=True)
     st.markdown("""
     - 1️⃣ Browse and upload a clear retinal fundus image (JPG/PNG).  
     - 2️⃣ Click **Submit** to run the AI model.  
@@ -127,82 +127,166 @@ def instructions_page():
 
 
 # ======================
-# DETECTION PAGE (IMPROVED LAYOUT)
+# DETECTION PAGE (ENHANCED WITH DATASET INTEGRATION)
 # ======================
 def detection_page(model):
+    import pandas as pd
+
+    # Label map (modify if your dataset uses different codes)
+    LABEL_MAP = {
+        0: "No DR",
+        1: "Mild",
+        2: "Moderate",
+        3: "Severe",
+        4: "Proliferative DR"
+    }
+
+    def get_true_label(image_code):
+        """Look for the true label in labels_train.csv / labels_val.csv / labels.csv"""
+        data_path = os.path.join(os.getcwd(), "data")
+        csv_files = ["labels.csv", "labels_train.csv", "labels_val.csv"]
+
+        for csv_name in csv_files:
+            csv_path = os.path.join(data_path, csv_name)
+            if os.path.exists(csv_path):
+                try:
+                    df = pd.read_csv(csv_path, header=None, names=["image", "label"])
+                    df["image"] = df["image"].astype(str)
+                    df["label"] = df["label"].astype(int)
+
+                    match = df[df["image"].str.contains(image_code, case=False, na=False)]
+                    if not match.empty:
+                        label_value = int(match.iloc[0]["label"])
+                        return LABEL_MAP.get(label_value, f"Unknown ({label_value})")
+                except Exception as e:
+                    st.warning(f"Error reading {csv_name}: {e}")
+        return None
+
+    # ----------------------
+    # UI Layout
+    # ----------------------
     st.markdown("<h2 style='text-align:center; color:#0b486b;'>🔍 Detection</h2>", unsafe_allow_html=True)
-    st.write("Upload a retinal fundus image (jpg/png).")
+    st.write("You can either upload an image OR paste/type the image path or dataset image code below:")
 
     uploaded_file = st.file_uploader("📁 Browse image", type=["jpg", "jpeg", "png"], key="uploader")
+    st.markdown("<br><b>Or</b>", unsafe_allow_html=True)
+    image_input = st.text_input(
+        "Paste or type image path / code",
+        placeholder="Example: C:\\path\\to\\image.png  OR  0a4e1a29ffff"
+    )
 
-    if uploaded_file:
-        img = Image.open(uploaded_file).convert("RGB")
-        st.image(img, caption="🖼️ Preview", use_container_width=True)
-        st.session_state["last_uploaded"] = uploaded_file
+    img = None
+    image_loaded = False
+    image_name = None
 
+    # ----------------------
+    # CASE 1: Uploaded Image
+    # ----------------------
+    if uploaded_file is not None:
+        try:
+            from io import BytesIO
+            # Read the uploaded file bytes explicitly
+            image_bytes = uploaded_file.read()
+            img = Image.open(BytesIO(image_bytes)).convert("RGB")
+
+            image_name = os.path.splitext(uploaded_file.name)[0]
+            image_loaded = True
+            st.image(img, caption="🖼️ Uploaded Image Preview", use_container_width=True)
+        except Exception as e:
+            st.error(f"⚠️ Could not open uploaded image: {e}")
+            st.stop()
+
+
+    # ----------------------
+    # CASE 2: Path or Code
+    # ----------------------
+    elif image_input.strip():
+        try:
+            path_text = image_input.strip().strip('"').strip("'").replace("\\\\", "\\")
+
+            # Case A: Full file path
+            if os.path.exists(path_text):
+                img = Image.open(path_text).convert("RGB")
+                image_name = os.path.splitext(os.path.basename(path_text))[0]
+                image_loaded = True
+                st.image(img, caption=f"🖼️ Loaded from Path: {os.path.basename(path_text)}", use_container_width=True)
+
+            # Case B: Search by image code in dataset folder
+            else:
+                base_folder = os.path.join(os.getcwd(), "data", "images")
+                found_path = None
+                for root, dirs, files in os.walk(base_folder):
+                    for file in files:
+                        if path_text.lower() in file.lower():
+                            found_path = os.path.join(root, file)
+                            break
+                    if found_path:
+                        break
+
+                if found_path:
+                    img = Image.open(found_path).convert("RGB")
+                    image_name = os.path.splitext(os.path.basename(found_path))[0]
+                    image_loaded = True
+                    rel_path = os.path.relpath(found_path, base_folder)
+                    st.image(img, caption=f"🖼️ Found in dataset: {rel_path}", use_container_width=True)
+                else:
+                    st.warning("⚠️ Image not found in dataset folder. Check image code or name again.")
+
+        except Exception as e:
+            st.error(f"Error loading image: {e}")
+
+   
+    # ----------------------
+    # Detection Section
+    # ----------------------
+    if image_loaded:
         st.markdown("<br>", unsafe_allow_html=True)
-        # Center submit button
         st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
         if st.button("🧠 Submit for Detection", use_container_width=False):
-            if model is None:
-                st.warning("Model not available or failed to load. Using demo result.")
-                import random
-                pred_idx = random.randint(0, 4)
-            else:
-                try:
+            try:
+                if model is None:
+                    st.warning("Model not available or failed to load. Using demo result.")
+                    import random
+                    pred_idx = random.randint(0, 4)
+                else:
                     from timm.data import resolve_model_data_config
                     from timm.data.transforms_factory import create_transform
-
                     config = resolve_model_data_config(model)
                     preprocess = create_transform(**config)
                     img_t = preprocess(img).unsqueeze(0)
-
                     with torch.no_grad():
                         preds = model(img_t)
                         pred_idx = int(preds.argmax(dim=1).item())
-                except Exception as e:
-                    st.error("Error during prediction.")
-                    pred_idx = 0
 
-            classes = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
-            colors = ["#27AE60", "#F7DC6F", "#F39C12", "#E05659", "#C0392B"]
-            st.session_state["result"] = {"label": classes[pred_idx], "color": colors[pred_idx]}
-            st.session_state["page"] = "result"
-            st.rerun()
+                # Predicted class & color
+                classes = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
+                colors = ["#27AE60", "#F7DC6F", "#F39C12", "#E05659", "#C0392B"]
+                st.session_state["result"] = {"label": classes[pred_idx], "color": colors[pred_idx]}
+                st.session_state["page"] = "result"
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error during prediction: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
-
     else:
-        st.info("Please upload an image to proceed.")
+        st.info("Please upload an image or enter a valid path/code to proceed.")
 
-            # bottom buttons (Back - left, Home - center, Reset - right)
-    st.markdown("<br><br>", unsafe_allow_html=True)
-
-    # Create 3 equal columns
+    # ----------------------
+    # Bottom Navigation Buttons
+    # ----------------------
+    st.markdown("<br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1, 1])
-
-    # Left corner - Back button
     with col1:
-        st.markdown("<div style='text-align:left;'>", unsafe_allow_html=True)
-        if st.button("◀️ Back", use_container_width=False):
+        if st.button("◀️ Back"):
             st.session_state["page"] = "instructions"
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # Center - Home button
     with col2:
-        st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-        if st.button("🏠 Home", use_container_width=False):
+        if st.button("🏠 Home"):
             st.session_state["page"] = "welcome"
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # Right corner - Reset button
     with col3:
-        st.markdown("<div style='text-align:right;'>", unsafe_allow_html=True)
-        if st.button("🔁 Reset", use_container_width=False):
+        if st.button("🔁 Reset"):
             st.session_state["last_uploaded"] = None
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ======================
