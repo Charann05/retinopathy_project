@@ -17,3 +17,15 @@ node_modules/
 *.mp4
 *.jpg
 *.png
+venv/
+dib/
+__pycache__/
+*.dll
+*.lib
+*.pyd
+*.so
+
+# Model files
+*.pth
+*.pt
+*.pkl
