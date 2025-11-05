@@ -3,3 +3,17 @@ __pycache__/
 results/
 data/
 echo "dib/Lib/site-packages/" 
+__pycache__/
+*.pyc
+*.pyo
+.vscode/
+env/
+.venv/
+node_modules/
+*.pth
+*.pkl
+*.zip
+*.exe
+*.mp4
+*.jpg
+*.png
