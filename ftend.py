@@ -58,7 +58,7 @@ def init_session():
 # ======================
 def left_side_settings():
     with st.sidebar:
-        st.markdown("## ⚙️ Settings / Info")
+        st.markdown("##  Info ")
 
         with st.expander("Aim", expanded=False):
             st.write("Assist in early detection of Diabetic Retinopathy using AI.")
@@ -242,7 +242,7 @@ def detection_page(model):
     if image_loaded:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-        if st.button("🧠 Submit for Detection", use_container_width=False):
+        if st.button(" Submit for Detection ", use_container_width=False):
             try:
                 if model is None:
                     st.warning("Model not available or failed to load. Using demo result.")
@@ -280,7 +280,7 @@ def detection_page(model):
             st.session_state["page"] = "instructions"
             st.rerun()
     with col2:
-        if st.button("🏠 Home"):
+        if st.button(" Home "):
             st.session_state["page"] = "welcome"
             st.rerun()
     with col3:
@@ -318,18 +318,15 @@ def result_page():
     }
     st.info(guidance.get(label, ""))
 
-    c1, c2, c3 = st.columns([1, 1, 1])
+    c1, c2 = st.columns([1, 1])
     with c1:
-        if st.button("🔁 Try Another"):
+        if st.button(" Try Another "):
             st.session_state["result"] = None
             st.session_state["page"] = "detection"
             st.rerun()
+    
     with c2:
-        if st.button("⤴️ Re-run"):
-            st.session_state["page"] = "detection"
-            st.rerun()
-    with c3:
-        if st.button("🏠 Home"):
+        if st.button("  Home  "):
             st.session_state["result"] = None
             st.session_state["page"] = "welcome"
             st.rerun()
