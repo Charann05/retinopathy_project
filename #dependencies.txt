@@ -1,7 +1,0 @@
-1. python -m venv environment_name          //Create environment
-2. .\environment_name\Scripts\Activate.ps1   
- or  environment_name\Scripts\activate.bat   //Activate environment
-3. pip install --upgrade pip        //Check for pip updates
-4. pip install torch torchvision timm albumentations opencv-python pandas scikit-learn matplotlib tqdm pillow       //Install dependicies
-5. pip uninstall torch torchvision torchaudio -y    //Uninstall torch
-6. pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121  //install torch that works with GPU
